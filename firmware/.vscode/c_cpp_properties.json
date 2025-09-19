@@ -8,9 +8,9 @@
         {
             "name": "PlatformIO",
             "includePath": [
-                "d:/smart box project/platformio/SmartBoxProject/src",
+                "d:/smart box project/platformio/SmartBoxProject/firmware/src",
                 "C:/Users/LIKA/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src",
-                "d:/smart box project/platformio/SmartBoxProject/.pio/libdeps/esp32dev/PubSubClient/src",
+                "d:/smart box project/platformio/SmartBoxProject/firmware/.pio/libdeps/esp32dev/PubSubClient/src",
                 "C:/Users/LIKA/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/newlib/platform_include",
                 "C:/Users/LIKA/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/freertos/include",
                 "C:/Users/LIKA/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/freertos/include/esp_additions/freertos",
@@ -244,9 +244,9 @@
             "browse": {
                 "limitSymbolsToIncludedHeaders": true,
                 "path": [
-                    "d:/smart box project/platformio/SmartBoxProject/src",
+                    "d:/smart box project/platformio/SmartBoxProject/firmware/src",
                     "C:/Users/LIKA/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src",
-                    "d:/smart box project/platformio/SmartBoxProject/.pio/libdeps/esp32dev/PubSubClient/src",
+                    "d:/smart box project/platformio/SmartBoxProject/firmware/.pio/libdeps/esp32dev/PubSubClient/src",
                     "C:/Users/LIKA/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/newlib/platform_include",
                     "C:/Users/LIKA/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/freertos/include",
                     "C:/Users/LIKA/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/freertos/include/esp_additions/freertos",
