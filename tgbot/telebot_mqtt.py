@@ -1,19 +1,31 @@
+# bot/bot.py
+import os
+import time
+from dotenv import load_dotenv
 import telebot
 import paho.mqtt.client as mqtt
-import paho.mqtt.publish as publish
-import time
 
-BOT_TOKEN = '8485869663:AAG2TBAIFJ9oZaNR60TKwHTYf4Ji8l-Z9h0'
-MQTT_BROKER = '192.168.0.14'
-MQTT_PORT = 1883
+# грузим переменные окружения из bot/.env
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"))
+
+BOT_TOKEN   = os.getenv("BOT_TOKEN")
+MQTT_BROKER = os.getenv("MQTT_HOST", "127.0.0.1")
+MQTT_PORT   = int(os.getenv("MQTT_PORT", "1883"))
+MQTT_USER   = os.getenv("MQTT_USER")
+MQTT_PASS   = os.getenv("MQTT_PASSWORD")
+
+if not BOT_TOKEN:
+    raise RuntimeError("BOT_TOKEN не задан. Заполни bot/.env или переменные окружения.")
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
 # глобально храним последнее значение датчика
 last_light_value = None
 
-# создаём MQTT клиент для подписки
-mqtt_client = mqtt.Client()
+# один постоянный MQTT-клиент: подписки + публикации
+mqtt_client = mqtt.Client(client_id="tg-bridge")
+if MQTT_USER:
+    mqtt_client.username_pw_set(MQTT_USER, MQTT_PASS)
 
 def on_connect(client, userdata, flags, rc):
     print("MQTT connected with code", rc)
@@ -24,14 +36,13 @@ def on_message(client, userdata, msg):
     if msg.topic == "home/lightsensor":
         try:
             last_light_value = int(msg.payload.decode())
-        except:
+        except Exception:
             last_light_value = None
 
 mqtt_client.on_connect = on_connect
 mqtt_client.on_message = on_message
 mqtt_client.connect(MQTT_BROKER, MQTT_PORT, 60)
 mqtt_client.loop_start()
-
 
 # ====== функции проверки света ======
 def try_switch_light(command, target_state, chat_id):
@@ -41,11 +52,10 @@ def try_switch_light(command, target_state, chat_id):
     """
     global last_light_value
 
-    for attempt in range(5):
-        # шлём команду на ESP
-        publish.single("home/relay1", command, hostname=MQTT_BROKER, port=MQTT_PORT)
+    for _ in range(5):
+        # публикуем команду без нового подключения
+        mqtt_client.publish("home/relay1", command, qos=0, retain=False)
 
-        # ждём обновления датчика
         time.sleep(2)
         val = last_light_value
         print("LightSensor:", val)
@@ -53,27 +63,22 @@ def try_switch_light(command, target_state, chat_id):
         if val is None:
             continue
 
-        # проверка включения
         if target_state == "on" and val < 1300:
             bot.send_message(chat_id, "✅ Свет включен")
             return
-        # проверка выключения
         if target_state == "off" and val > 2200:
             bot.send_message(chat_id, "✅ Свет выключен")
             return
 
-    # если 5 раз не получилось
     bot.send_message(chat_id, "❌ Что-то пошло по пизде, иди чини")
 
-
-# ====== бота запускаем ======
+# ====== Telegram-обработчики ======
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add("💡 Включить свет", "🔌 Выключить свет")
     markup.add("⬆️ Открыть ворота", "⬇️ Закрыть ворота")
     bot.send_message(message.chat.id, "Йо брат, управляй умным домом:", reply_markup=markup)
-
 
 @bot.message_handler(func=lambda m: True)
 def handle_buttons(message):
@@ -86,16 +91,15 @@ def handle_buttons(message):
         try_switch_light("OFF", "off", message.chat.id)
 
     elif text == "⬆️ Открыть ворота":
-        publish.single("home/shutter", "OPEN", hostname=MQTT_BROKER, port=MQTT_PORT)
+        mqtt_client.publish("home/shutter", "OPEN")
         bot.send_message(message.chat.id, "⬆️ Открываю ворота")
 
     elif text == "⬇️ Закрыть ворота":
-        publish.single("home/shutter", "CLOSE", hostname=MQTT_BROKER, port=MQTT_PORT)
+        mqtt_client.publish("home/shutter", "CLOSE")
         bot.send_message(message.chat.id, "⬇️ Закрываю ворота")
 
     else:
         bot.send_message(message.chat.id, "Не понял команду, братишка.")
 
-
 print("Бот запущен...")
-bot.infinity_polling()
+bot.infinity_polling(skip_pending=True, timeout=20, long_polling_timeout=20)
