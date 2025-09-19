@@ -8,6 +8,7 @@
         {
             "name": "PlatformIO",
             "includePath": [
+                "d:/smart box project/platformio/SmartBoxProject/firmware/include",
                 "d:/smart box project/platformio/SmartBoxProject/firmware/src",
                 "C:/Users/LIKA/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src",
                 "d:/smart box project/platformio/SmartBoxProject/firmware/.pio/libdeps/esp32dev/PubSubClient/src",
@@ -244,6 +245,7 @@
             "browse": {
                 "limitSymbolsToIncludedHeaders": true,
                 "path": [
+                    "d:/smart box project/platformio/SmartBoxProject/firmware/include",
                     "d:/smart box project/platformio/SmartBoxProject/firmware/src",
                     "C:/Users/LIKA/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src",
                     "d:/smart box project/platformio/SmartBoxProject/firmware/.pio/libdeps/esp32dev/PubSubClient/src",
