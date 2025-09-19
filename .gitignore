@@ -25,3 +25,4 @@ __pycache__/
 # Прочее
 .DS_Store       # системный файл macOS
 firmware/include/config.h
+.env
