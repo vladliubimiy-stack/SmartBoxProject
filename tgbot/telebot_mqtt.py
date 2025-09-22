@@ -19,8 +19,9 @@ if not BOT_TOKEN:
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
-# глобально храним последнее значение датчика
+# глобально храним последние значения датчиков
 last_light_value = None
+last_climat_report = None
 
 # один постоянный MQTT-клиент: подписки + публикации
 mqtt_client = mqtt.Client(client_id="tg-bridge")
@@ -30,14 +31,17 @@ if MQTT_USER:
 def on_connect(client, userdata, flags, rc):
     print("MQTT connected with code", rc)
     client.subscribe("home/lightsensor")
+    client.subscribe("home/climat/report")   # подписка на климат
 
 def on_message(client, userdata, msg):
-    global last_light_value
+    global last_light_value, last_climat_report
     if msg.topic == "home/lightsensor":
         try:
             last_light_value = int(msg.payload.decode())
         except Exception:
             last_light_value = None
+    elif msg.topic == "home/climat/report":
+        last_climat_report = msg.payload.decode()
 
 mqtt_client.on_connect = on_connect
 mqtt_client.on_message = on_message
@@ -78,6 +82,7 @@ def send_welcome(message):
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add("💡 Включить свет", "🔌 Выключить свет")
     markup.add("⬆️ Открыть ворота", "⬇️ Закрыть ворота")
+    markup.add("🌡 Температура в боксе")  # новая кнопка
     bot.send_message(message.chat.id, "Йо брат, управляй умным домом:", reply_markup=markup)
 
 @bot.message_handler(func=lambda m: True)
@@ -97,6 +102,12 @@ def handle_buttons(message):
     elif text == "⬇️ Закрыть ворота":
         mqtt_client.publish("home/shutter", "CLOSE")
         bot.send_message(message.chat.id, "⬇️ Закрываю ворота")
+
+    elif text == "🌡 Температура в боксе":
+        if last_climat_report:
+            bot.send_message(message.chat.id, last_climat_report)
+        else:
+            bot.send_message(message.chat.id, "❌ Климат ещё не прислал данные")
 
     else:
         bot.send_message(message.chat.id, "Не понял команду, братишка.")

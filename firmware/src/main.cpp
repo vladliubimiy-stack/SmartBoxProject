@@ -2,6 +2,7 @@
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include "config.h"   // см. firmware/include/config.h (Wi-Fi SSID и PASS)
+#include "climat.h"
 
 // ============== MQTT ==============
 static const char* MQTT_HOST = "192.168.0.14";   // поправь если брокер другой
@@ -18,9 +19,14 @@ static const uint8_t LIGHT_PIN         = 34;  // фоторезистор (ADC)
 static const char* T_RELAY_CMD     = "home/relay1";
 static const char* T_SHUTTER_CMD   = "home/shutter";
 static const char* T_LIGHT_SENSOR  = "home/lightsensor";
+// климат
+static const char* T_CLIMAT_TEMP   = "home/climat/temp";
+static const char* T_CLIMAT_HUM    = "home/climat/hum";
+static const char* T_CLIMAT_REPORT = "home/climat/report";
 
 WiFiClient espClient;
 PubSubClient client(espClient);
+Climat climat;
 
 // ================= Wi-Fi =================
 static void connectWiFi() {
@@ -120,6 +126,10 @@ void setup() {
   Serial.begin(115200);
   delay(100);
 
+  if (!climat.begin()) {
+    Serial.println("SHT21/HTU21 не найден!");
+  }
+
   pinMode(RELAY_PIN, OUTPUT);
   digitalWrite(RELAY_PIN, LOW);
 
@@ -128,7 +138,7 @@ void setup() {
   digitalWrite(SHUTTER_OPEN_PIN, LOW);
   digitalWrite(SHUTTER_CLOSE_PIN, LOW);
 
-  // LIGHT_PIN — ADC, pinMode не обязателен, но можно явно
+  // LIGHT_PIN — ADC
   pinMode(LIGHT_PIN, INPUT);
 
   connectWiFi();
@@ -151,5 +161,26 @@ void loop() {
     lastPub = millis();
     Serial.print("LIGHT: ");
     Serial.println(val);
+  }
+
+  // --- публикация климата ---
+  static uint32_t lastClimat = 0;
+  if (millis() - lastClimat > 5000) {  // каждые 5 секунд
+    float t = climat.getTemperature();
+    float h = climat.getHumidity();
+
+    // для автоматики (чистые числа)
+    char buf[16];
+    dtostrf(t, 4, 1, buf);
+    client.publish(T_CLIMAT_TEMP, buf);
+    dtostrf(h, 4, 1, buf);
+    client.publish(T_CLIMAT_HUM, buf);
+
+    // для телеги (красиво)
+    String report = climat.getReport();
+    client.publish(T_CLIMAT_REPORT, report.c_str());
+
+    lastClimat = millis();
+    Serial.println(report);
   }
 }
