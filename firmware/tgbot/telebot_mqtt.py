@@ -6,6 +6,7 @@ import time
 from dotenv import load_dotenv
 import telebot
 import paho.mqtt.client as mqtt
+from access_control import is_allowed_user, parse_allowed_user_ids
 
 BASE_DIR = os.path.dirname(__file__)
 DEFAULT_ENV_PATH = os.path.join(BASE_DIR, ".env")
@@ -48,6 +49,7 @@ MQTT_BROKER = os.getenv("MQTT_HOST")
 MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
 MQTT_USER = os.getenv("MQTT_USER")
 MQTT_PASS = os.getenv("MQTT_PASSWORD")
+ALLOWED_TELEGRAM_USER_IDS = parse_allowed_user_ids(os.getenv("ALLOWED_TELEGRAM_USER_IDS"))
 
 if not BOT_TOKEN:
     raise RuntimeError("BOT_TOKEN не задан. Заполни tgbot/.env или переменные окружения.")
@@ -59,6 +61,9 @@ if not MQTT_BROKER:
     )
     raise RuntimeError("MQTT_HOST не задан, запуск бота остановлен.")
 
+if not MQTT_USER or not MQTT_PASS:
+    raise RuntimeError("MQTT_USER и MQTT_PASSWORD обязательны. Заполните локальный .env.")
+
 bot = telebot.TeleBot(BOT_TOKEN)
 
 # глобально храним последние значения датчиков
@@ -67,8 +72,7 @@ last_climat_report = None
 
 # один постоянный MQTT-клиент: подписки + публикации
 mqtt_client = mqtt.Client(callback_api_version=mqtt.CallbackAPIVersion.VERSION2, client_id="tg-bridge")
-if MQTT_USER:
-    mqtt_client.username_pw_set(MQTT_USER, MQTT_PASS)
+mqtt_client.username_pw_set(MQTT_USER, MQTT_PASS)
 
 
 def on_connect(client, userdata, flags, reason_code, properties):
@@ -127,8 +131,20 @@ def try_switch_light(command, target_state, chat_id):
 
 
 # ====== Telegram-обработчики ======
+def is_authorized(message):
+    user = getattr(message, "from_user", None)
+    user_id = getattr(user, "id", None)
+    if is_allowed_user(user_id, ALLOWED_TELEGRAM_USER_IDS):
+        return True
+    logger.warning("Rejected Telegram user %s", user_id)
+    bot.send_message(message.chat.id, "Доступ запрещён.")
+    return False
+
+
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
+    if not is_authorized(message):
+        return
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add("💡 Включить свет", "🔌 Выключить свет")
     markup.add("⬆️ Открыть ворота", "⬇️ Закрыть ворота")
@@ -138,6 +154,8 @@ def send_welcome(message):
 
 @bot.message_handler(func=lambda m: True)
 def handle_buttons(message):
+    if not is_authorized(message):
+        return
     text = (message.text or "").strip()
 
     try:

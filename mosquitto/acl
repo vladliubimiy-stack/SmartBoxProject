@@ -1,0 +1,17 @@
+# Create the three accounts in mosquitto/passwd. Keep passwords outside Git.
+# ESP32: receive actuator commands and publish sensor readings.
+user smartbox
+topic read home/relay1
+topic read home/shutter
+topic write home/lightsensor
+topic write home/climat/#
+# Telegram bridge: send commands and read reports.
+user telegram
+topic write home/relay1
+topic write home/shutter
+topic read home/lightsensor
+topic read home/climat/#
+# Jarvis: send only supported actuator commands.
+user jarvis
+topic write home/relay1
+topic write home/shutter

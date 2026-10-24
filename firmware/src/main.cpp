@@ -151,7 +151,7 @@ static void ensureMqtt() {
   Serial.print(mqttIp);
   Serial.print(':');
   Serial.println(MQTT_PORT);
-  if (client.connect(MQTT_CLIENT_ID)) {
+  if (client.connect(MQTT_CLIENT_ID, MQTT_USER, MQTT_PASS)) {
     Serial.println("MQTT: connected");
     client.subscribe(T_RELAY_CMD);
     client.subscribe(T_SHUTTER_CMD);
