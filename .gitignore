@@ -26,3 +26,7 @@ __pycache__/
 .DS_Store       # системный файл macOS
 firmware/include/config.h
 .env
+
+# Local Mosquitto credential file
+mosquitto/passwd
+mosquitto/passwd.*
